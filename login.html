@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="form-container">
+    <h2>Login</h2>
+    <form id="loginForm">
+      <input type="text" name="username" placeholder="Username" required />
+      <input type="password" name="password" placeholder="Password" required />
+      <button type="submit">Login</button>
+    </form>
+    <p>Don't have an account? <a href="register.html">Register</a></p>
+  </div>
+
+  <script>
+    const form = document.getElementById("loginForm");
+    const loginBtn = form.querySelector("button");
+  
+    // Check if locked
+    const lockoutUntil = localStorage.getItem("lockoutUntil");
+    if (lockoutUntil && Date.now() < parseInt(lockoutUntil)) {
+      disableLogin("Login temporarily locked for 2 minutes.");
+    }
+  
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+  
+      // Block login if locked
+      if (isLocked()) {
+        alert("Login temporarily locked for 2 minutes.");
+        return;
+      }
+  
+      const formData = new FormData(form);
+      const res = await fetch("login.php", {
+        method: "POST",
+        body: formData
+      });
+      const result = await res.text();
+  
+      if (result.trim() === "success") {
+        localStorage.removeItem("attempts");
+        localStorage.removeItem("lockoutUntil");
+        alert("Login successful!");
+        window.location.href = "welcome.html";
+      } else {
+        let attempts = parseInt(localStorage.getItem("attempts") || "0") + 1;
+        localStorage.setItem("attempts", attempts);
+  
+        if (attempts >= 3) {
+          const lockTime = Date.now() + 2 * 60 * 1000; // 2 minutes
+          localStorage.setItem("lockoutUntil", lockTime);
+          disableLogin("Login temporarily locked for 2 minutes.");
+        } else {
+          alert(result);
+        }
+      }
+    });
+  
+    function disableLogin(msg) {
+      loginBtn.disabled = true;
+      loginBtn.style.backgroundColor = "#999";
+      alert(msg);
+  
+      const interval = setInterval(() => {
+        const lockoutUntil = parseInt(localStorage.getItem("lockoutUntil"));
+        if (Date.now() >= lockoutUntil) {
+          loginBtn.disabled = false;
+          loginBtn.style.backgroundColor = "#5cb85c";
+          localStorage.removeItem("attempts");
+          localStorage.removeItem("lockoutUntil");
+          clearInterval(interval);
+        }
+      }, 1000);
+    }
+  
+    function isLocked() {
+      const lockoutUntil = parseInt(localStorage.getItem("lockoutUntil") || "0");
+      return Date.now() < lockoutUntil;
+    }
+  </script>
+  
+</body>
+</html>
